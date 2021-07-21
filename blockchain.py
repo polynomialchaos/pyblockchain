@@ -54,7 +54,7 @@ def proof_of_work(header, difficulty_bits):
 
         # check if this is a valid result, below the target
         if int(hash_result, 16) < target:
-            return hash_result, nonce
+            return nonce, hash_result
 
     raise(RuntimeError('Maximum nonce limit reached!'))
 
@@ -64,8 +64,8 @@ class Blockchain():
         self._chain = []
         self._pending_transactions = []
 
-        hash_result, nonce = proof_of_work('root_hash', self.difficulty)
-        self.new_block(previous_hash="root_block", proof=nonce)
+        nonce, hash_result = proof_of_work('root_hash', self.difficulty)
+        self.new_block(proof=nonce, previous_hash=hash_result)
 
     def add_transaction(self, sender, recipient, amount):
         """Add a new transaction to the pending transactions."""
@@ -115,14 +115,14 @@ class Blockchain():
 
 if __name__ == '__main__':
 
-    blockchain = Blockchain()
+    blockchain = Blockchain(difficulty=23)
 
     blockchain.add_transaction("Satoshi", "Mike", 1)
     blockchain.add_transaction("Mike", "Satoshi", 1)
     blockchain.add_transaction("Satoshi", "Hal Finney", 5)
 
     hash_block = blockchain.hash(blockchain.last_block)
-    hash_result, nonce = proof_of_work(hash_block, blockchain.difficulty)
+    nonce, _ = proof_of_work(hash_block, blockchain.difficulty)
     blockchain.new_block(nonce)
 
     print(blockchain.last_block)
@@ -132,7 +132,7 @@ if __name__ == '__main__':
     blockchain.add_transaction("Bob", "Mike", 0.2)
 
     hash_block = blockchain.hash(blockchain.last_block)
-    hash_result, nonce = proof_of_work(hash_block, blockchain.difficulty)
+    nonce, _ = proof_of_work(hash_block, blockchain.difficulty)
     blockchain.new_block(nonce)
 
     print(blockchain.last_block)
