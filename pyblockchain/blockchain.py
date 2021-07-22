@@ -22,57 +22,27 @@
 import hashlib
 import json
 from time import time
-from functools import wraps
+from .proof_of_work import proof_of_work
 
-max_nonce = 2 ** 32 # 4 billion
-
-def profile(function_pointer):
-    @wraps(function_pointer)
-    def with_profiling(*args, **kwargs):
-        start_time = time()
-        ret = function_pointer(*args, **kwargs)
-        elapsed_time = time() - start_time
-
-        print(' >>> Function {:} called with {:} execution time!'.format(
-            function_pointer.__name__, elapsed_time))
-
-        return ret
-
-    return with_profiling
-
-@profile
-def proof_of_work(header, difficulty_bits):
-    """Return a valid none as proof of work."""
-    # calculate the difficulty target
-    target = 2 ** (256-difficulty_bits)
-
-    for nonce in range(max_nonce):
-        string_object = str(header)+str(nonce)
-        byte_object = string_object.encode()
-
-        hash_result = hashlib.sha256(byte_object).hexdigest()
-
-        # check if this is a valid result, below the target
-        if int(hash_result, 16) < target:
-            return nonce, hash_result
-
-    raise(RuntimeError('Maximum nonce limit reached!'))
 
 class Blockchain():
-    def __init__(self, difficulty=16):
+    def __init__(self, difficulty=16, load=None, **kwargs):
         self.difficulty = difficulty
         self._chain = []
         self._pending_transactions = []
 
-        nonce, hash_result = proof_of_work('root_hash', self.difficulty)
-        self.new_block(proof=nonce, previous_hash=hash_result)
+        if load is None:
+            nonce, hash_result = proof_of_work('root_hash', difficulty)
+            self.new_block(proof=nonce, previous_hash=hash_result)
+        else:
+            self.read(load, **kwargs)
 
     def add_transaction(self, sender, recipient, amount):
         """Add a new transaction to the pending transactions."""
         transaction = {
             'sender': sender,
             'recipient': recipient,
-            'amount': amount
+            'amount': float(amount)
         }
 
         self._pending_transactions.append(transaction)
@@ -113,26 +83,17 @@ class Blockchain():
         """Return the number of pending transactions."""
         return len(self._pending_transactions)
 
-if __name__ == '__main__':
+    def read(self, path, **kwargs):
+        with open(path, 'r') as fp:
+            read_data = json.load(fp, **kwargs)
 
-    blockchain = Blockchain(difficulty=23)
+        for idx, block in enumerate(read_data):
+            if idx > 0:
+                if self.hash(self.last_block) != block['previous_hash']:
+                    raise(ValueError('Different block hashes!'))
 
-    blockchain.add_transaction("Satoshi", "Mike", 1)
-    blockchain.add_transaction("Mike", "Satoshi", 1)
-    blockchain.add_transaction("Satoshi", "Hal Finney", 5)
+            self._chain.append(block)
 
-    hash_block = blockchain.hash(blockchain.last_block)
-    nonce, _ = proof_of_work(hash_block, blockchain.difficulty)
-    blockchain.new_block(nonce)
-
-    print(blockchain.last_block)
-
-    blockchain.add_transaction("Mike", "Alice", 1)
-    blockchain.add_transaction("Alice", "Bob", 0.5)
-    blockchain.add_transaction("Bob", "Mike", 0.2)
-
-    hash_block = blockchain.hash(blockchain.last_block)
-    nonce, _ = proof_of_work(hash_block, blockchain.difficulty)
-    blockchain.new_block(nonce)
-
-    print(blockchain.last_block)
+    def write(self, path, **kwargs):
+        with open(path, 'w') as fp:
+            json.dump(self._chain, fp, **kwargs)
