@@ -9,7 +9,7 @@ setup(
     packages=['pyblockchain'],
     entry_points={
         "console_scripts": [
-            'pyBlockchain=bin.pyBlockchain:main',
+            'pyBlockchain=pyblockchain.bin.pyBlockchain:main',
         ]
     }
 )
